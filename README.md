@@ -120,32 +120,3 @@ Predict if text is malicious
 2. **Development Mode**: CORS is currently open for all origins
 3. **Privacy**: No data is stored or transmitted outside your local setup
 4. **WhatsApp TOS**: Ensure compliance with WhatsApp's Terms of Service
-
-## 🔒 Security Considerations
-
-- Model file should be properly validated
-- Consider implementing rate limiting
-- Review and restrict CORS origins for production
-- Monitor for false positives
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📝 License
-
-[Add your license here]
-
-## 🐛 Known Issues
-
-- Model file not included in repository
-- CORS settings need production configuration
-- Requires manual installation of Chrome extension
-
-## 📞 Support
-
-[Add your contact information or support channels]
