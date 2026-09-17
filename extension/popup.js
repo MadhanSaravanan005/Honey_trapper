@@ -35,21 +35,23 @@ scanBtn.addEventListener("click", async () => {
     });
 
     if (!resp.ok) {
-      statusDiv.textContent = "API error " + resp.status;
+      const errData = await resp.json().catch(() => ({}));
+      statusDiv.textContent = "API error " + resp.status + (errData.detail ? ": " + errData.detail : "");
       return;
     }
 
     const data = await resp.json();
     const label = (data.label || "").toLowerCase();
     const tags = data.tags || [];
-    const score = data.score ? " (" + Math.round(data.score * 100) + "%)" : "";
+    const score = data.score !== null && data.score !== undefined ? " (" + Math.round(data.score * 100) + "%)" : "";
+    const tagText = tags.length > 0 ? " [" + tags.join(", ") + "]" : "";
 
     if (label === "malicious") {
       resultDiv.className = "result malicious";
-      resultDiv.textContent = "MALICIOUS " + score + " [" + tags.join(", ") + "]";
+      resultDiv.textContent = "MALICIOUS" + score + tagText;
     } else {
       resultDiv.className = "result normal";
-      resultDiv.textContent = "NORMAL " + score;
+      resultDiv.textContent = "NORMAL" + score;
     }
     statusDiv.textContent = "";
   } catch (err) {
@@ -57,3 +59,4 @@ scanBtn.addEventListener("click", async () => {
     statusDiv.textContent = "Request failed: " + err.message;
   }
 });
+

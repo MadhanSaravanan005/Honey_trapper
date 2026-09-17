@@ -1,122 +1,160 @@
-# WhatsApp Malicious Message Detector
+# Honey Trapper
 
-A Chrome extension and FastAPI backend system that detects potentially malicious messages on WhatsApp Web using machine learning.
+## Overview
+Honey Trapper is a client-server security tool composed of a Manifest V3 Chrome browser extension and a FastAPI backend service. It monitors and inspects WhatsApp Web chat text to identify indicators of social engineering attacks, urgency-driven deception, and honeytrap manipulation patterns.
 
-## 🚀 Features
+## Problem
+Instant messaging platforms such as WhatsApp are frequently used by bad actors to conduct social engineering, romance scams, financial manipulation, and honeytraps. Users often miss conversational cues indicating artificial urgency, emotional manipulation, or deceptive secrecy before engaging with harmful requests or fraudulent links.
 
-- **Real-time Detection**: Automatically scans incoming WhatsApp messages
-- **Manual Scanning**: Extension popup for manually checking suspicious text
-- **Visual Alerts**: Highlights malicious messages with red borders and warning tags
-- **AI-Powered**: Uses machine learning model for accurate detection
-- **Tag System**: Categorizes threats (urgency, manipulation, flirty content)
+## Solution
+Honey Trapper provides proactive message scanning through two operational layers:
+1. A **Chrome Extension** that observes incoming messages on WhatsApp Web or allows users to manually submit suspicious messages for verification.
+2. A **FastAPI Backend** that classifies message text using a trained machine learning model (`honeytrap_detector.joblib`) or an automated heuristic keyword detection fallback if no custom model has been supplied.
 
-## 📁 Project Structure
+## Features
+- **Real-Time DOM Inspection**: Checks incoming messages on WhatsApp Web at configurable intervals.
+- **Manual Scanning Popup**: Quick-scan text area in the extension toolbar to evaluate arbitrary snippets on demand.
+- **Visual Alert Highlighting**: Emphasizes flagged malicious messages with a distinct red boundary and category tag.
+- **Contextual Threat Tagging**: Categorizes signals into `urgency`, `flirty`, and `manipulation`.
+- **Dual Inference Modes**:
+  - **ML Mode**: Uses a scikit-learn classification pipeline (`honeytrap_detector.joblib`) with class probability scores.
+  - **Heuristic Fallback Mode**: Rule-based detection ensures the backend works immediately upon cloning without requiring a pre-existing binary model file.
+- **Model Training Utility**: Includes `backend/train.py` to train and export a baseline TF-IDF Logistic Regression model.
 
-```
+## How It Works
+1. **Message Ingestion**: The extension content script periodically captures incoming text from WhatsApp Web message containers (`.message-in`), or the user inputs text into the extension popup.
+2. **Background Dispatch**: The extension service worker dispatches a JSON POST payload to the FastAPI `/predict` endpoint.
+3. **Classification**:
+   - The backend runs tag extraction for urgency, flirtation, and secrecy keywords.
+   - If a custom model is loaded from disk, `model.predict` and `model.predict_proba` determine the label and confidence score.
+   - If no model is present, the heuristic engine classifies the message based on detected threat patterns.
+4. **Visual Feedback**: The result (`label`, `score`, `tags`) is returned to the extension, updating the UI badge or highlighting the message element directly in the chat.
+
+## Project Structure
+```text
+Honey_trapper/
 ├── backend/
-│   ├── app.py                    # FastAPI server
-│   ├── requirements.txt          # Python dependencies
-│   └── honeytrap_detector.joblib # ML model (not included)
+│   ├── app.py               # FastAPI application with REST endpoints and fallback logic
+│   ├── requirements.txt     # Python package requirements for backend
+│   └── train.py             # Script to train and save baseline ML model
 ├── extension/
-│   ├── manifest.json            # Chrome extension manifest
-│   ├── background.js            # Service worker
-│   ├── content.js               # WhatsApp page content script
-│   ├── popup.html               # Extension popup UI
-│   └── popup.js                 # Popup functionality
-└── README.md
+│   ├── background.js        # Extension service worker handling API requests
+│   ├── content.js           # Content script monitoring WhatsApp Web DOM
+│   ├── manifest.json        # Chrome Extension Manifest V3 configuration
+│   ├── popup.html           # Manual scanner popup interface
+│   └── popup.js             # Logic for popup manual scanning
+├── tests/
+│   └── test_app.py          # Pytest suite verifying endpoints and classification
+├── .gitignore               # Git exclusion rules
+├── README.md                # Project documentation
+└── requirements.txt         # Root Python requirements file for easy setup
 ```
 
-## 🛠 Setup Instructions
+## Requirements
+- Python 3.10 or higher
+- Google Chrome or Chromium-based browser supporting Manifest V3
+- Active internet connection (for initial pip package installation)
 
-### Backend Setup
-
-1. **Navigate to backend folder**:
+## Installation
+1. Clone the repository:
    ```bash
-   cd backend
+   git clone https://github.com/MadhanSaravanan005/Honey_trapper.git
+   cd Honey_trapper
    ```
 
-2. **Create virtual environment**:
+2. Create and activate a Python virtual environment:
    ```bash
+   # Windows
    python -m venv venv
-   venv\Scripts\activate  # Windows
-   # source venv/bin/activate  # Linux/Mac
+   venv\Scripts\activate
+
+   # macOS / Linux
+   python3 -m venv venv
+   source venv/bin/activate
    ```
 
-3. **Install dependencies**:
+3. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Add your ML model**:
-   - Place your trained model file as `honeytrap_detector.joblib` in the backend folder
-   - The model should be trained with scikit-learn and saved using joblib
+## Running the Project
 
-5. **Run the server**:
-   ```bash
-   uvicorn app:app --reload --host 0.0.0.0 --port 8000
-   ```
+### 1. Start the Backend API
+Run the FastAPI application from the project root:
+```bash
+uvicorn backend.app:app --reload --host 0.0.0.0 --port 8000
+```
+Or from within the `backend/` directory:
+```bash
+cd backend
+uvicorn app:app --reload --host 0.0.0.0 --port 8000
+```
+Verify the server is running by visiting `http://localhost:8000/`.
 
-### Chrome Extension Setup
+### 2. (Optional) Train the Baseline ML Model
+If you wish to use machine learning classification rather than heuristic fallback:
+```bash
+python backend/train.py
+```
+This generates `backend/honeytrap_detector.joblib`. Restart the server to load the trained model.
 
-1. **Open Chrome and go to**: `chrome://extensions/`
+### 3. Load the Chrome Extension
+1. Open Google Chrome and navigate to `chrome://extensions/`.
+2. Toggle **Developer mode** in the top-right corner.
+3. Click **Load unpacked**.
+4. Select the `extension/` directory inside this repository.
+5. (Optional) Pin the **WhatsApp Message Watcher** icon to the browser toolbar.
 
-2. **Enable Developer Mode** (toggle in top right)
+## Testing
+Run the automated test suite with pytest from the project root:
+```bash
+pytest -v
+```
 
-3. **Click "Load unpacked"** and select the `extension` folder
+## Example Usage
 
-4. **Pin the extension** to your toolbar for easy access
+### Health Check Request
+```bash
+curl http://localhost:8000/
+```
+Response:
+```json
+{
+  "status": "ready (heuristic fallback)",
+  "mode": "heuristic",
+  "message": "No trained model file found. Running in rule-based heuristic mode. Place 'honeytrap_detector.joblib' in the backend directory to enable ML inference."
+}
+```
 
-## 📋 Usage
+### Prediction Request
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d "{\"text\": \"Hey baby, please hurry urgent love secret\"}"
+```
+Response:
+```json
+{
+  "label": "malicious",
+  "score": 0.95,
+  "tags": [
+    "urgency",
+    "flirty",
+    "manipulation"
+  ]
+}
+```
 
-### Automatic Detection
-1. Open WhatsApp Web in Chrome
-2. The extension automatically monitors incoming messages
-3. Malicious messages are highlighted with red borders and warning tags
+## Limitations
+- **WhatsApp Web DOM Sensitivity**: The content script relies on specific DOM class selectors (`.message-in`) which can change when WhatsApp updates its web client layout.
+- **Rule and Baseline Heuristics**: The built-in heuristics and small baseline training corpus are intended as demonstration baselines and do not replace comprehensive commercial anti-fraud systems.
+- **Plaintext Analysis Only**: Analysis is limited to text payloads; media files, images, voice notes, and file attachments are not evaluated.
+- **Local Connectivity**: The extension requires active connectivity to the local or hosted backend endpoint to classify text.
 
-### Manual Scanning
-1. Click the extension icon in your toolbar
-2. Paste suspicious text into the textarea
-3. Click "Scan" to check the message
-4. Results show as "MALICIOUS" (red) or "NORMAL" (green)
+## Future Improvements
+- Implement a `MutationObserver` in `content.js` instead of a polling interval for reduced CPU overhead and faster event-driven reaction.
+- Expand training corpus with diverse multi-language dataset covering contemporary social engineering techniques.
+- Add real-time link reputation and phishing domain checking.
+- Enable user-configurable keyword lists and sensitivity thresholds via the extension settings.
 
-## 🔧 Configuration
-
-### API Endpoint
-- Default: `http://localhost:8000/predict`
-- Can be changed in the extension popup
-- Settings are automatically saved
-
-### CORS Settings
-- Currently set to allow all origins (`*`) for development
-- **⚠️ For production**: Update CORS settings in `backend/app.py` to restrict origins
-
-## 📊 API Endpoints
-
-### `GET /`
-Health check endpoint
-- Returns model loading status
-
-### `POST /predict`
-Predict if text is malicious
-- **Request**: `{"text": "message content"}`
-- **Response**: 
-  ```json
-  {
-    "label": "malicious|normal",
-    "score": 0.85,
-    "tags": ["urgency", "manipulation"]
-  }
-  ```
-
-## 🏷 Detection Tags
-
-- **urgency**: Contains urgent/time-pressure language
-- **flirty**: Contains romantic/flirtatious content
-- **manipulation**: Contains trust/secrecy manipulation tactics
-
-## ⚠️ Important Notes
-
-1. **ML Model Required**: You need to provide your own `honeytrap_detector.joblib` file
-2. **Development Mode**: CORS is currently open for all origins
-3. **Privacy**: No data is stored or transmitted outside your local setup
-4. **WhatsApp TOS**: Ensure compliance with WhatsApp's Terms of Service
